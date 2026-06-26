@@ -45,26 +45,74 @@
   })();
 
   /* ============================
-     Music
+     Music (Howler)
+     - will NOT autoplay on load
+     - will start after a user interaction (Begin or Open Gift)
   ============================ */
-  const musicBtn = document.getElementById('musicBtn');
+  const musicControl = document.getElementById('musicControl');
+  const musicBtn = document.getElementById('musicBtn'); // older control
   const sound = new Howl({
     src: ['assets/music.mp3'],
     loop: true,
-    volume: 0.5
+    volume: 0.5,
+    html5: true // use html5 audio to improve mobile compatibility
   });
-  if(musicBtn){
-    musicBtn.onclick = ()=>{
-      if(sound.playing()){ sound.pause(); musicBtn.textContent = "Play Music"; }
-      else{ sound.play(); musicBtn.textContent = "Pause Music"; }
-    };
+
+  function updateMusicUI(playing){
+    if(musicControl){
+      if(playing) musicControl.classList.add('playing'), musicControl.textContent = '▮▮';
+      else musicControl.classList.remove('playing'), musicControl.textContent = '♪';
+    }
+    if(musicBtn){
+      musicBtn.textContent = playing ? 'Pause Music' : 'Play Music';
+    }
   }
+
+  function playSoundIfNotPlaying(){
+    try{
+      if(!sound.playing()){
+        sound.play();
+        updateMusicUI(true);
+      }
+    }catch(e){
+      // some browsers may throw if permission not granted; ignore silently
+      console.warn('Music play blocked or failed', e);
+    }
+  }
+  function toggleMusic(){
+    try{
+      if(sound.playing()){
+        sound.pause();
+        updateMusicUI(false);
+      } else {
+        sound.play();
+        updateMusicUI(true);
+      }
+    } catch(e){
+      console.warn('toggleMusic error', e);
+    }
+  }
+
+  // wire music UI
+  if(musicControl) musicControl.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    toggleMusic();
+  });
+  if(musicBtn) musicBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    // older control also toggles
+    if(sound.playing()) sound.pause(), updateMusicUI(false);
+    else sound.play(), updateMusicUI(true);
+  });
 
   /* ============================
      Wire up buttons and flow
   ============================ */
   const beginBtn = document.getElementById('beginBtn');
   if(beginBtn) beginBtn.addEventListener('click', ()=> {
+    // start music now that user interacted
+    playSoundIfNotPlaying();
+
     gsap.to('#welcome', {opacity:0, duration:0.6, onComplete: ()=> show('cake')});
     gsap.from('#cake', {scale:0.92, duration:0.6, ease:"power2.out"});
   });
@@ -189,6 +237,7 @@
 
   /* ============================
      Letter typing (custom message) — now waits for Next button
+     + improved finishing animation so text 'pops' smoothly
   ============================ */
   const letterText = `happy birthday to the cutest girl I have ever met in my life, thank you for being in my life..! You are the cutest thing I could ever get, stay happy stay bindas..! Keep flying..✨💜
 
@@ -206,19 +255,33 @@ With all my love,
       gsap.set(nextBtn, {opacity:0, y:6});
       nextBtn.style.pointerEvents = 'none';
     }
+    // clear and prepare
     el.textContent = '';
+    el.style.opacity = 0.98;
     let i=0;
     const speed = 18;
+
+    // more robust typing: batch by character but avoid heavy layout thrash
     function step(){
       if(i<=letterText.length){
+        // gradually reveal
         el.textContent = letterText.slice(0,i);
         i++;
         setTimeout(step, speed);
       } else {
-        // show Next button for manual progression
+        // typing finished — animate the whole block so it "pops" cleanly
+        const tl = gsap.timeline();
+        tl.fromTo(el, {scale:0.985, filter:'drop-shadow(0 0 0 rgba(0,0,0,0))', opacity:0.96},
+                         {scale:1, filter:'drop-shadow(0 16px 40px rgba(138,79,255,0.08))', opacity:1, duration:0.7, ease:'back.out(1.2)'});
+        // subtle glow on paper while text is displayed
+        tl.to('.paper::before', {duration:0.8}, 0);
+
+        // animate next button in
         if(nextBtn){
           gsap.to(nextBtn, {opacity:1, y:0, duration:0.45, ease:'power2.out', onStart: ()=> { nextBtn.style.pointerEvents = 'auto'; }});
         }
+        // also animate the greeting a little
+        gsap.fromTo('#letterGreet', {y:-6, opacity:0.92}, {y:0, opacity:1, duration:0.6, ease:'power2.out'});
       }
     }
     step();
@@ -226,7 +289,9 @@ With all my love,
 
   // Next button listener to proceed to gift
   const letterNextBtn = document.getElementById('letterNextBtn');
-  if(letterNextBtn) letterNextBtn.addEventListener('click', ()=> show('gift'));
+  if(letterNextBtn) letterNextBtn.addEventListener('click', ()=> {
+    show('gift');
+  });
 
   /* ============================
      Memory polaroids
@@ -268,15 +333,18 @@ With all my love,
   if(openGiftBtn) openGiftBtn.addEventListener('click', ()=>{
     const min = document.getElementById('minion');
     if(min) gsap.fromTo(min, {y:-40, scale:0.6, rotation:-8, opacity:0}, {y:0, scale:1, rotation:0, opacity:1, duration:0.9, ease:'elastic.out(1,0.6)'});
+    // starting music on this interaction as well
+    playSoundIfNotPlaying();
     setTimeout(()=> show('final'), 1600);
   });
 
   /* ============================
-     Virtual gift animation
+     Virtual gift animation (sticker + hearts)
   ============================ */
   const giftBox = document.getElementById('giftBox');
   const giftLid = document.getElementById('giftLid');
   const giftReveal = document.getElementById('giftReveal');
+  const giftSticker = document.getElementById('giftSticker');
   const openGiftBtn2 = document.getElementById('openGiftBtn2');
   const skipGiftBtn = document.getElementById('skipGiftBtn');
 
@@ -299,22 +367,32 @@ With all my love,
   }
 
   function openGiftSequence(){
+    // Start music if not playing (user interaction)
+    playSoundIfNotPlaying();
+
     if(!giftLid || !giftBox || !giftReveal) return;
     gsap.to(giftLid, {rotationX: -120, transformOrigin: "center bottom", duration:0.8, ease:'back.out(1.4)'});
     gsap.to(giftBox, {scale:1.04, duration:0.6, ease:'power2.out'});
     setTimeout(()=> spawnHearts(12), 420);
     setTimeout(()=> confetti({particleCount:120, spread:110, origin:{y:0.45}}), 420);
     setTimeout(()=> {
+      // reveal message and animate sticker
       gsap.to(giftReveal, {opacity:1, duration:0.6, y:0, ease:'power2.out'});
+      if(giftSticker){
+        gsap.fromTo(giftSticker, {scale:0.6, rotation:-20, opacity:0}, {scale:1, rotation:0, opacity:1, duration:0.8, ease:'elastic.out(1,0.6)'});
+        // sticker subtle bob
+        gsap.to(giftSticker, {y:-6, duration:1.6, yoyo:true, repeat:-1, ease:'sine.inOut', delay:0.9});
+      }
     }, 640);
     setTimeout(()=> {
-      setTimeout(()=> show('final'), 1900);
+      // auto-advance to memory after a short moment
+      setTimeout(()=> show('memory'), 1900);
     }, 1400);
   }
 
   if(openGiftBtn2) openGiftBtn2.addEventListener('click', openGiftSequence);
   if(giftBox) giftBox.addEventListener('click', openGiftSequence);
-  if(skipGiftBtn) skipGiftBtn.addEventListener('click', ()=> show('final'));
+  if(skipGiftBtn) skipGiftBtn.addEventListener('click', ()=> show('memory'));
 
   /* ============================
      Final fireworks
@@ -349,10 +427,11 @@ With all my love,
     if(scratchMessage) scratchMessage.classList.add('hide');
     // reset flames
     gsap.set('.flame',{opacity:1, scale:1, yPercent:0});
-    // reset gift
+    // reset gift visuals
     if(giftLid) gsap.set(giftLid, {rotationX:0});
     if(giftBox) gsap.set(giftBox, {scale:1});
     if(giftReveal) giftReveal.style.opacity = 0;
+    if(giftSticker) { gsap.set(giftSticker, {scale:0.8, rotation:0, opacity:0}); gsap.killTweensOf(giftSticker); }
     // reset letter next button
     const nextBtn = document.getElementById('letterNextBtn');
     if(nextBtn){
