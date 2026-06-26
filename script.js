@@ -7,9 +7,13 @@
     if(el) el.classList.add('active');
 
     // step-specific triggers
-    if(step === 'letter') typeLetter();
-    if(step === 'memory') animatePolaroids();
-    if(step === 'final') startFinalFireworks();
+    if(step === 'letter') revealLetter();
+    if(step === 'minion') revealMinion();
+    if(step === 'final') {
+      startFinalFireworks();
+      // Pause music on final screen as requested
+      try { pauseAll(); console.log('[Audio] Paused on final screen'); } catch(e) { console.warn(e); }
+    }
   }
 
   /* ============================
@@ -45,85 +49,149 @@
   })();
 
   /* ============================
-     Music (Howler)
-     - will NOT autoplay on load
-     - will start after a user interaction (Begin or Open Gift)
+     Audio manager (Howler + fallback)
+     - Play triggered on Begin click only
+     - Console logs added per requirements
   ============================ */
   const musicControl = document.getElementById('musicControl');
-  const musicBtn = document.getElementById('musicBtn'); // older control
+  const musicBtn = document.getElementById('musicBtn');
+
+  // All audio paths point to assets/
+  const MUSIC_SRC = 'assets/music.mp3';
+
   const sound = new Howl({
-    src: ['assets/music.mp3'],
+    src: [MUSIC_SRC],
     loop: true,
-    volume: 0.5,
-    html5: true // use html5 audio to improve mobile compatibility
+    volume: 0.56,
+    html5: true
   });
+
+  let audioFallback = null;
+  let usingFallback = false;
+  let howlerSoundId = null;
 
   function updateMusicUI(playing){
     if(musicControl){
-      if(playing) musicControl.classList.add('playing'), musicControl.textContent = '▮▮';
-      else musicControl.classList.remove('playing'), musicControl.textContent = '♪';
+      if(playing){
+        musicControl.classList.add('playing');
+        musicControl.textContent = '▮▮';
+      } else {
+        musicControl.classList.remove('playing');
+        musicControl.textContent = '♪';
+      }
     }
     if(musicBtn){
       musicBtn.textContent = playing ? 'Pause Music' : 'Play Music';
     }
   }
 
-  function playSoundIfNotPlaying(){
+  sound.on('load', ()=>console.log('[Audio] Howler loaded', MUSIC_SRC));
+  sound.on('play', id => {
+    console.log('[Audio] Howler play (using Howler). id=', id);
+    howlerSoundId = id;
+    usingFallback = false;
+    updateMusicUI(true);
+    console.log('Music started');
+  });
+  sound.on('pause', ()=>{ updateMusicUI(false); console.log('Music paused (Howler)'); });
+  sound.on('stop', ()=>{ updateMusicUI(false); });
+  sound.on('end', ()=>{ updateMusicUI(false); });
+  sound.on('loaderror', (id,err)=>{ console.error('[Audio] Howler loaderror', id, err); tryHtmlAudioFallback(err); });
+  sound.on('playerror', (id,err)=>{ console.warn('[Audio] Howler playerror', id, err); tryHtmlAudioFallback(err); });
+
+  function tryHtmlAudioFallback(err){
+    console.warn('[Audio] Falling back to HTMLAudio due to error:', err);
+    if(audioFallback) return;
     try{
-      if(!sound.playing()){
-        sound.play();
-        updateMusicUI(true);
-      }
-    }catch(e){
-      // some browsers may throw if permission not granted; ignore silently
-      console.warn('Music play blocked or failed', e);
-    }
-  }
-  function toggleMusic(){
-    try{
-      if(sound.playing()){
-        sound.pause();
-        updateMusicUI(false);
+      audioFallback = new Audio(MUSIC_SRC);
+      audioFallback.loop = true;
+      audioFallback.volume = 0.56;
+      const p = audioFallback.play();
+      if(p && p.catch){
+        p.catch((e) => {
+          console.error('[Audio] HTMLAudio play failed:', e);
+        });
       } else {
-        sound.play();
+        usingFallback = true;
         updateMusicUI(true);
+        console.log('Using HTMLAudio fallback. Music started (fallback)');
       }
     } catch(e){
-      console.warn('toggleMusic error', e);
+      console.error('[Audio] HTMLAudio fallback initialization error:', e);
     }
   }
 
-  // wire music UI
-  if(musicControl) musicControl.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    toggleMusic();
-  });
-  if(musicBtn) musicBtn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    // older control also toggles
-    if(sound.playing()) sound.pause(), updateMusicUI(false);
-    else sound.play(), updateMusicUI(true);
-  });
+  function isPlaying(){
+    if(usingFallback){
+      return audioFallback && !audioFallback.paused && !audioFallback.ended;
+    }
+    return howlerSoundId !== null && sound.playing(howlerSoundId);
+  }
+
+  function playIfNotPlaying(){
+    try{
+      if(isPlaying()) { console.log('[Audio] already playing'); return; }
+      console.log('[Audio] Attempting Howler.play()');
+      howlerSoundId = sound.play(); // called as part of a user gesture
+      usingFallback = false;
+    } catch(e){
+      console.warn('[Audio] Howler.play threw', e);
+      tryHtmlAudioFallback(e);
+    }
+  }
+
+  function pauseAll(){
+    try{
+      if(usingFallback && audioFallback){
+        audioFallback.pause();
+        console.log('[Audio] HTMLAudio paused');
+      } else if(howlerSoundId !== null){
+        sound.pause(howlerSoundId);
+        console.log('[Audio] Howler paused');
+      }
+      updateMusicUI(false);
+    } catch(e){
+      console.warn('[Audio] pauseAll error', e);
+    }
+  }
+
+  function toggleMusic(){
+    try{
+      if(isPlaying()){
+        pauseAll();
+        console.log('Music paused via toggle');
+      } else {
+        playIfNotPlaying();
+        console.log('Music resumed/started via toggle');
+      }
+    } catch(e){
+      console.warn('[Audio] toggle error', e);
+    }
+  }
+
+  if(musicControl) musicControl.addEventListener('click', e => { e.stopPropagation(); toggleMusic(); });
+  if(musicBtn) musicBtn.addEventListener('click', e => { e.stopPropagation(); toggleMusic(); });
 
   /* ============================
-     Wire up buttons and flow
+     Buttons and flow
+     - Music starts on Begin click only (per your instruction)
   ============================ */
   const beginBtn = document.getElementById('beginBtn');
   if(beginBtn) beginBtn.addEventListener('click', ()=> {
-    // start music now that user interacted
-    playSoundIfNotPlaying();
+    // Start music now that user has intentionally interacted
+    try {
+      playIfNotPlaying();
+      console.log('[Audio] Begin clicked -> attempted to start music');
+    } catch(e){
+      console.warn('[Audio] error starting music on Begin', e);
+    }
 
     gsap.to('#welcome', {opacity:0, duration:0.6, onComplete: ()=> show('cake')});
     gsap.from('#cake', {scale:0.92, duration:0.6, ease:"power2.out"});
   });
 
-  /* Cake flames */
   const flames = document.querySelectorAll('.flame');
-  function flicker(){
-    flames.forEach((f)=>{
-      gsap.to(f, {yPercent: (Math.random()*20-10), scale: 0.9+Math.random()*0.25, rotation: Math.random()*6-3, duration: 0.12+Math.random()*0.2, ease:'sine.inOut'});
-    });
-  }
+  function flicker(){ flames.forEach((f)=>{ gsap.to(f, {yPercent: (Math.random()*20-10), scale: 0.9+Math.random()*0.25, rotation: Math.random()*6-3, duration: 0.12+Math.random()*0.2, ease:'sine.inOut'}); }); }
   if(flames.length) setInterval(flicker, 140);
 
   const blowBtn = document.getElementById('blowBtn');
@@ -134,7 +202,6 @@
     setTimeout(()=> show('question'), 1100);
   });
 
-  /* Question screen (evasive No) */
   const noBtn = document.getElementById('noBtn');
   const questionEl = document.getElementById('questionScreen');
   function moveNo(){
@@ -150,10 +217,7 @@
     const ny = Math.random()*(maxY-minY)+minY;
     gsap.to(noBtn, {x: nx - btnRect.left, y: ny - btnRect.top, duration:0.45, ease:'power3.out'});
   }
-  if(noBtn){
-    noBtn.addEventListener('mouseenter', moveNo);
-    noBtn.addEventListener('click', moveNo);
-  }
+  if(noBtn){ noBtn.addEventListener('mouseenter', moveNo); noBtn.addEventListener('click', moveNo); }
   const yesBtn = document.getElementById('yesBtn');
   if(yesBtn) yesBtn.addEventListener('click', ()=> show('scratch'));
 
@@ -180,11 +244,7 @@
     resetOverlay();
 
     let isDown=false;
-    function drawPoint(x,y){
-      ctx.beginPath();
-      ctx.arc(x,y,22,0,Math.PI*2);
-      ctx.fill();
-    }
+    function drawPoint(x,y){ ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2); ctx.fill(); }
     function onDown(e){
       isDown=true;
       const r = canvas.getBoundingClientRect();
@@ -213,9 +273,7 @@
     function getClearedPercent(){
       const pixels = ctx.getImageData(0,0,canvas.width,canvas.height).data;
       let cleared = 0;
-      for(let i=3;i<pixels.length;i+=4){
-        if(pixels[i] === 0) cleared++;
-      }
+      for(let i=3;i<pixels.length;i+=4){ if(pixels[i] === 0) cleared++; }
       return cleared / (canvas.width*canvas.height);
     }
     const messageEl = document.getElementById('scratchMessage');
@@ -231,13 +289,11 @@
       }
     }
 
-    // expose reset for replay
     window._resetScratch = resetOverlay;
   })();
 
   /* ============================
-     Letter typing (custom message) — now waits for Next button
-     + improved finishing animation so text 'pops' smoothly
+     Letter reveal
   ============================ */
   const letterText = `happy birthday to the cutest girl I have ever met in my life, thank you for being in my life..! You are the cutest thing I could ever get, stay happy stay bindas..! Keep flying..✨💜
 
@@ -246,153 +302,313 @@ Wishing you a sky full of dreams and a heart full of laughter. You make every da
 With all my love,
 — Ashish`;
 
-  function typeLetter(){
+  function revealLetter(){
     const el = document.getElementById('letterText');
     const nextBtn = document.getElementById('letterNextBtn');
     if(!el) return;
-    // reset next button state
-    if(nextBtn){
-      gsap.set(nextBtn, {opacity:0, y:6});
-      nextBtn.style.pointerEvents = 'none';
-    }
-    // clear and prepare
-    el.textContent = '';
-    el.style.opacity = 0.98;
-    let i=0;
-    const speed = 18;
-
-    // more robust typing: batch by character but avoid heavy layout thrash
-    function step(){
-      if(i<=letterText.length){
-        // gradually reveal
-        el.textContent = letterText.slice(0,i);
-        i++;
-        setTimeout(step, speed);
-      } else {
-        // typing finished — animate the whole block so it "pops" cleanly
-        const tl = gsap.timeline();
-        tl.fromTo(el, {scale:0.985, filter:'drop-shadow(0 0 0 rgba(0,0,0,0))', opacity:0.96},
-                         {scale:1, filter:'drop-shadow(0 16px 40px rgba(138,79,255,0.08))', opacity:1, duration:0.7, ease:'back.out(1.2)'});
-        // subtle glow on paper while text is displayed
-        tl.to('.paper::before', {duration:0.8}, 0);
-
-        // animate next button in
-        if(nextBtn){
-          gsap.to(nextBtn, {opacity:1, y:0, duration:0.45, ease:'power2.out', onStart: ()=> { nextBtn.style.pointerEvents = 'auto'; }});
-        }
-        // also animate the greeting a little
-        gsap.fromTo('#letterGreet', {y:-6, opacity:0.92}, {y:0, opacity:1, duration:0.6, ease:'power2.out'});
-      }
-    }
-    step();
+    const paragraphs = letterText.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    el.innerHTML = paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join('');
+    if(nextBtn){ gsap.set(nextBtn, {opacity:0, y:6}); nextBtn.style.pointerEvents = 'none'; }
+    gsap.set(el, {opacity:0, y:8, scale:0.995});
+    gsap.to(el, {opacity:1, y:0, scale:1, duration:0.85, ease:'power3.out', onComplete: ()=>{
+      if(nextBtn){ gsap.to(nextBtn, {opacity:1, y:0, duration:0.45, ease:'power2.out', onStart: ()=> { nextBtn.style.pointerEvents = 'auto'; }}); }
+    }});
   }
 
-  // Next button listener to proceed to gift
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
   const letterNextBtn = document.getElementById('letterNextBtn');
-  if(letterNextBtn) letterNextBtn.addEventListener('click', ()=> {
-    show('gift');
-  });
+  if(letterNextBtn) letterNextBtn.addEventListener('click', ()=> show('gift'));
 
   /* ============================
-     Memory polaroids
+     Minion reveal (gentle bounce & wave)
+     - ensure minion image is hidden while on minion screen until user clicks second Open Gift
   ============================ */
-  const photos = [
-    'assets/photo1.jpg','assets/photo2.jpg','assets/photo3.jpg',
-    'assets/photo4.jpg','assets/photo5.jpg','assets/photo6.jpg'
-  ];
-  const grid = document.getElementById('memoryGrid');
-  function populatePolaroids(){
-    if(!grid) return;
-    grid.innerHTML = '';
-    photos.forEach((p,i)=>{
-      const card = document.createElement('div');
-      card.className='polaroid';
-      card.innerHTML = `<img src="${p}" alt="memory ${i+1}"><div class="cap">Memory ${i+1}</div>`;
-      card.style.transform = `rotate(${(Math.random()*6-3).toFixed(2)}deg) translateY(30px) scale(0.92)`;
-      card.style.opacity = 0;
-      card.addEventListener('click', ()=> {
-        gsap.to(card, {scale:1.08, rotate:0, duration:0.28, yoyo:true, repeat:1, ease:'power1.inOut'});
-      });
-      grid.appendChild(card);
-    });
-  }
-  populatePolaroids();
-
-  function animatePolaroids(){
-    const nodes = document.querySelectorAll('.polaroid');
-    if(!nodes.length) return;
-    gsap.to(nodes, {y:0, opacity:1, scale:1, stagger:0.08, duration:0.7, ease:'back.out(1.4)'});
-    // auto-advance to minion after a short pause (optional)
-    setTimeout(()=> show('minion'), 3600);
-  }
-
-  /* ============================
-     Minion reveal (from memory -> minion)
-  ============================ */
-  const openGiftBtn = document.getElementById('openGiftBtn');
-  if(openGiftBtn) openGiftBtn.addEventListener('click', ()=>{
+  const minionImg = document.getElementById('minionImg');
+  const minionNextBtn = document.getElementById('minionNextBtn');
+  function revealMinion(){
     const min = document.getElementById('minion');
-    if(min) gsap.fromTo(min, {y:-40, scale:0.6, rotation:-8, opacity:0}, {y:0, scale:1, rotation:0, opacity:1, duration:0.9, ease:'elastic.out(1,0.6)'});
-    // starting music on this interaction as well
-    playSoundIfNotPlaying();
-    setTimeout(()=> show('final'), 1600);
-  });
+    const caption = document.getElementById('minionCaption');
+    if(caption) caption.style.opacity = 0.95;
+
+    // Hide the minion image initially (it will be revealed only after second Open Gift click)
+    if(minionImg){
+      minionImg.style.display = 'block';
+      gsap.set(minionImg, {opacity:0, scale:0.95});
+    }
+
+    if(min){
+      gsap.fromTo(min, {y:-10, rotation: -2}, {y:0, rotation:0, duration:0.8, ease:'sine.out'});
+      gsap.to(min, {y:-8, duration:1.2, yoyo:true, repeat:-1, ease:'sine.inOut'});
+      gsap.to(min, {rotation:6, duration:1.8, yoyo:true, repeat:-1, ease:'sine.inOut'});
+    }
+
+    // Ensure Next button is hidden on arrival
+    if(minionNextBtn){
+      gsap.set(minionNextBtn, {opacity:0, y:6});
+      minionNextBtn.style.pointerEvents = 'none';
+    }
+  }
 
   /* ============================
-     Virtual gift animation (sticker + hearts)
+     Gift sequences and second Open Gift
+     - minion image only appears AFTER clicking second Open Gift
+     - After minion reveal, show "This is for you ❤️🎁" and the Next button (user-driven final)
   ============================ */
   const giftBox = document.getElementById('giftBox');
   const giftLid = document.getElementById('giftLid');
   const giftReveal = document.getElementById('giftReveal');
   const giftSticker = document.getElementById('giftSticker');
-  const openGiftBtn2 = document.getElementById('openGiftBtn2');
+  const openGiftBtn2 = document.getElementById('openGiftBtn2'); // button on gift screen (first open)
+  const openGiftBtn = document.getElementById('openGiftBtn');   // button on minion screen (second open)
   const skipGiftBtn = document.getElementById('skipGiftBtn');
+  const teddyContainer = document.getElementById('teddyContainer');
+  const teddyMessage = document.getElementById('teddyMessage');
+  const teddyNextBtn = document.getElementById('teddyNextBtn');
+  let giftOpened = false;
+  let secondGiftOpened = false;
 
-  function spawnHearts(count=8){
+  function createTeddySVG(){
+    if(!teddyContainer) return;
+    teddyContainer.innerHTML = '';
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox','0 0 240 240');
+    svg.classList.add('teddy-svg');
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="tdg" x1="0" x2="1">
+          <stop offset="0" stop-color="#ffd9b3"/><stop offset="1" stop-color="#ffbfa1"/>
+        </linearGradient>
+      </defs>
+      <g transform="translate(120,120)">
+        <g id="teddyBody">
+          <ellipse cx="0" cy="40" rx="50" ry="60" fill="url(#tdg)" stroke="#a36a3f" stroke-width="2"/>
+        </g>
+        <g id="teddyHead" transform="translate(0,-40)">
+          <circle cx="0" cy="0" r="42" fill="url(#tdg)" stroke="#a36a3f" stroke-width="2"/>
+          <circle cx="-18" cy="-32" r="16" fill="url(#tdg)" stroke="#a36a3f" stroke-width="2"/>
+          <circle cx="18" cy="-32" r="16" fill="url(#tdg)" stroke="#a36a3f" stroke-width="2"/>
+          <ellipse cx="-10" cy="-6" rx="6" ry="8" fill="#3b2a2a"/>
+          <ellipse cx="10" cy="-6" rx="6" ry="8" fill="#3b2a2a"/>
+          <circle cx="0" cy="8" r="7" fill="#3b2a2a"/>
+          <path d="M -10 14 Q 0 26 10 14" fill="none" stroke="#6b3b3b" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        <g id="teddyArms" transform="translate(0,0)">
+          <ellipse cx="-58" cy="0" rx="14" ry="20" fill="url(#tdg)" stroke="#a36a3f" stroke-width="2"/>
+          <ellipse cx="58" cy="0" rx="14" ry="20" fill="url(#tdg)" stroke="#a36a3f" stroke-width="2"/>
+        </g>
+        <g id="heart" transform="translate(0,28) scale(0.9)">
+          <path d="M 0 -4 C -18 -30 -60 -10 -18 24 C 0 40 18 24 18 24 C 60 -10 18 -30 0 -4 Z"
+            fill="#ff6c9b" stroke="#c23a6a" stroke-width="2"/>
+        </g>
+      </g>
+    `;
+    teddyContainer.appendChild(svg);
+  }
+
+  function spawnFloatingHearts(count=10){
     for(let i=0;i<count;i++){
       const h = document.createElement('div');
-      h.className='heart';
-      const size = 18 + Math.random()*18;
+      h.className = 'heart';
+      const size = 14 + Math.random()*28;
       h.style.width = h.style.height = size + 'px';
-      h.style.left = (giftBox.getBoundingClientRect().left + giftBox.offsetWidth/2 - (size/2) + (Math.random()*80-40)) + 'px';
-      h.style.top = (giftBox.getBoundingClientRect().top + 10 + (Math.random()*20-10)) + 'px';
-      h.style.background = 'linear-gradient(180deg,#ff8bd8,#ff5fa0)';
-      h.style.opacity = 0.95;
-      h.style.zIndex = 9999;
+      const left = (window.innerWidth/2) + (Math.random()*360 - 180);
+      const top = (window.innerHeight/2) + (Math.random()*160 - 80);
+      h.style.left = left + 'px';
+      h.style.top = top + 'px';
+      h.style.background = `radial-gradient(circle at 35% 30%, #fff6, #fff0), linear-gradient(180deg, #ff99c6, #ff5fa0)`;
+      h.style.borderRadius = '50%';
+      h.style.opacity = '0.95';
+      h.style.zIndex = 9998;
       document.body.appendChild(h);
-      gsap.fromTo(h, {y:0, scale:0.6, opacity:0}, {y:-120 - Math.random()*80, x: (Math.random()*120-60), rotation: (Math.random()*80-40), opacity:1, duration:1.6 + Math.random()*0.6, ease:'power2.out', onComplete: ()=> {
-        gsap.to(h, {opacity:0, duration:0.6, onComplete: ()=> h.remove()});
-      }});
+      gsap.fromTo(h, {y:0, scale:0.6, rotation: Math.random()*30-15, opacity:0}, {
+        y: -160 - Math.random()*160,
+        x: (Math.random()*120-60),
+        opacity:1,
+        scale:1,
+        duration: 1.6 + Math.random(),
+        ease: 'power2.out',
+        onComplete: ()=> gsap.to(h, {opacity:0, duration:0.6, onComplete: ()=> h.remove()})
+      });
     }
   }
 
-  function openGiftSequence(){
-    // Start music if not playing (user interaction)
-    playSoundIfNotPlaying();
+  // First open (on gift screen) — shows teddy and reveals Next button; does NOT auto-advance.
+  function openGiftSequence_First(){
+    if(giftOpened) return;
+    giftOpened = true;
 
-    if(!giftLid || !giftBox || !giftReveal) return;
+    if(!giftLid || !giftBox || !giftReveal){
+      console.error('[Gift] missing elements on first open');
+      show('final');
+      return;
+    }
+
     gsap.to(giftLid, {rotationX: -120, transformOrigin: "center bottom", duration:0.8, ease:'back.out(1.4)'});
     gsap.to(giftBox, {scale:1.04, duration:0.6, ease:'power2.out'});
-    setTimeout(()=> spawnHearts(12), 420);
-    setTimeout(()=> confetti({particleCount:120, spread:110, origin:{y:0.45}}), 420);
+
+    setTimeout(()=> confetti({particleCount:220, spread:160, origin:{y:0.45}}), 420);
+    setTimeout(()=> spawnFloatingHearts(14), 520);
+
     setTimeout(()=> {
-      // reveal message and animate sticker
-      gsap.to(giftReveal, {opacity:1, duration:0.6, y:0, ease:'power2.out'});
-      if(giftSticker){
-        gsap.fromTo(giftSticker, {scale:0.6, rotation:-20, opacity:0}, {scale:1, rotation:0, opacity:1, duration:0.8, ease:'elastic.out(1,0.6)'});
-        // sticker subtle bob
-        gsap.to(giftSticker, {y:-6, duration:1.6, yoyo:true, repeat:-1, ease:'sine.inOut', delay:0.9});
+      try {
+        createTeddySVG();
+        const tcont = teddyContainer;
+        const tmsg = teddyMessage;
+        if(tcont && tmsg){
+          tcont.classList.remove('hide');
+          tmsg.textContent = "Happy Birthday, Miss Captain 🤍🤍";
+          tmsg.style.opacity = 0;
+
+          gsap.to(giftReveal, {opacity:1, duration:0.6, y:0, ease:'power2.out'});
+          if(giftSticker) { gsap.fromTo(giftSticker, {scale:0.6, rotation:-20, opacity:0}, {scale:1, rotation:0, opacity:1, duration:0.8, ease:'elastic.out(1,0.6)'}); }
+          gsap.fromTo(tcont, {scale:0.6, opacity:0, y:12}, {scale:1, opacity:1, y:0, duration:0.9, ease:'elastic.out(1,0.6)'});
+          gsap.to(tmsg, {opacity:1, y:0, duration:0.8, ease:'power2.out', delay:0.2});
+
+          // enable Teddy Next button so user can proceed manually
+          const tNext = document.getElementById('teddyNextBtn');
+          if(tNext){
+            gsap.set(tNext, {opacity:1, y:0});
+            tNext.style.pointerEvents = 'auto';
+            console.log('[Flow] Teddy Next shown — waiting for user');
+          }
+        } else {
+          console.warn('[Gift] missing teddy container/message (first open)');
+        }
+      } catch(err){
+        console.error('[Gift] first reveal error', err);
       }
     }, 640);
-    setTimeout(()=> {
-      // auto-advance to memory after a short moment
-      setTimeout(()=> show('memory'), 1900);
-    }, 1400);
   }
 
-  if(openGiftBtn2) openGiftBtn2.addEventListener('click', openGiftSequence);
-  if(giftBox) giftBox.addEventListener('click', openGiftSequence);
-  if(skipGiftBtn) skipGiftBtn.addEventListener('click', ()=> show('memory'));
+  // Second open (on minion screen) — do the big minion gift animation then reveal minion image and show Next button (user-driven final)
+  function openGiftSequence_SecondOnMinion(){
+    if(secondGiftOpened) return;
+    secondGiftOpened = true;
+
+    const minionScreen = document.getElementById('minionScreen');
+    if(!minionScreen){
+      console.error('[Minion Gift] minionScreen not found');
+      show('final');
+      return;
+    }
+
+    // Create a temporary closed gift visual (for animation)
+    const temp = document.createElement('div');
+    temp.className = 'temp-gift';
+    temp.style.position = 'absolute';
+    temp.style.width = '140px';
+    temp.style.height = '110px';
+    temp.style.left = '50%';
+    temp.style.top = '58%';
+    temp.style.transform = 'translate(-50%,-50%)';
+    temp.style.zIndex = 9999;
+    temp.innerHTML = `<div style="width:100%;height:100%;border-radius:8px; background:linear-gradient(180deg,#ff6ec7,#d44fb0); display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800; position:relative;">
+      <div style="position:absolute;left:0;right:0;top:0;height:38px;background:linear-gradient(180deg,#ffd34f,#ffb84f);border-radius:8px 8px 0 0; transform-origin:center bottom;" id="tempGiftLid"></div>
+      <div style="position:relative; z-index:2;">TO YOU</div>
+    </div>`;
+    document.body.appendChild(temp);
+
+    // animate closed gift appearing
+    gsap.fromTo(temp, {scale:0.6, opacity:0}, {scale:1, opacity:1, duration:0.6, ease:'back.out(1.2)'});
+
+    setTimeout(()=> {
+      const lid = document.getElementById('tempGiftLid');
+      if(lid){ gsap.to(lid, {rotationX: -120, transformOrigin: 'center bottom', duration:0.7, ease:'back.out(1.4)'}); }
+      spawnFloatingHearts(16);
+      confetti({particleCount:160, spread:120, origin:{y:0.45}});
+    }, 300);
+
+    // After the opening animation, reveal the minion image with a pop/scale/fade animation
+    setTimeout(()=> {
+      // Remove temp box
+      temp.remove();
+
+      // Reveal minion image (it was hidden on entering minion)
+      if(minionImg){
+        // animate pop: start from small/transparent to full
+        gsap.fromTo(minionImg, {scale:0.6, opacity:0}, {scale:1, opacity:1, duration:0.9, ease:'elastic.out(1,0.6)'});
+      }
+
+      // Update caption to the requested string and animate it
+      const caption = document.getElementById('minionCaption');
+      if(caption){
+        caption.textContent = 'This is for you ❤️🎁';
+        gsap.fromTo(caption, {y:8, opacity:0}, {y:0, opacity:1, duration:0.6, ease:'power2.out'});
+      }
+
+      // Additional confetti/hearts shortly after reveal
+      setTimeout(()=> { confetti({particleCount:120, spread:100, origin:{y:0.45}}); spawnFloatingHearts(10); }, 220);
+
+      // Show Minion Next button (user clicks to continue)
+      if(minionNextBtn){
+        gsap.to(minionNextBtn, {opacity:1, y:0, duration:0.45, ease:'power2.out', onStart: ()=> { minionNextBtn.style.pointerEvents = 'auto'; }});
+      }
+
+    }, 1000); // reveal after ~1s (after lid animation)
+  }
+
+  // Attach handlers; log if missing
+  if(openGiftBtn2){
+    openGiftBtn2.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      console.log('[Click] openGiftBtn2 clicked (gift screen first open)');
+      openGiftSequence_First();
+    });
+  } else console.warn('[Init] openGiftBtn2 not found');
+
+  if(openGiftBtn){
+    openGiftBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      console.log('[Click] openGiftBtn (minion screen second open) clicked');
+      openGiftSequence_SecondOnMinion();
+    });
+  } else console.warn('[Init] openGiftBtn not found');
+
+  if(giftBox){
+    giftBox.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      console.log('[Click] giftBox clicked (gift screen)');
+      openGiftSequence_First();
+    });
+  }
+
+  if(skipGiftBtn){
+    skipGiftBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      show('minion');
+    });
+  }
+
+  // Teddy Next button — must be clicked to progress to Minion screen
+  const tNextButton = document.getElementById('teddyNextBtn');
+  if(tNextButton){
+    tNextButton.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      console.log('[Click] Teddy Next pressed — proceeding to minion');
+      tNextButton.style.pointerEvents = 'none';
+      show('minion');
+    });
+  } else {
+    console.warn('[Init] teddyNextBtn not found');
+  }
+
+  // Minion Next button: when clicked, smoothly transition to final
+  if(minionNextBtn){
+    minionNextBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      console.log('[Click] Minion Next pressed — transitioning to final');
+      minionNextBtn.style.pointerEvents = 'none';
+      // Fade out minion screen smoothly, then show final
+      gsap.to('#minionScreen', {opacity:0, duration:0.45, onComplete: ()=> {
+        // restore opacity so screen system remains consistent
+        gsap.set('#minionScreen', {opacity:''});
+        show('final');
+      }});
+    });
+  } else {
+    console.warn('[Init] minionNextBtn not found');
+  }
 
   /* ============================
      Final fireworks
@@ -411,38 +627,88 @@ With all my love,
   }
 
   /* ============================
-     Replay
+     Replay - reset
   ============================ */
   const replayBtn = document.getElementById('replayBtn');
   if(replayBtn) replayBtn.addEventListener('click', ()=>{
-    // reset scratch overlay
     const scratchCanvas = document.getElementById('scratchCanvas');
-    if(scratchCanvas){
-      scratchCanvas.style.opacity=1;
-      scratchCanvas.style.pointerEvents='auto';
-      window._resetScratch && window._resetScratch();
-    }
-    // hide scratch message
+    if(scratchCanvas){ scratchCanvas.style.opacity=1; scratchCanvas.style.pointerEvents='auto'; window._resetScratch && window._resetScratch(); }
     const scratchMessage = document.getElementById('scratchMessage');
     if(scratchMessage) scratchMessage.classList.add('hide');
-    // reset flames
     gsap.set('.flame',{opacity:1, scale:1, yPercent:0});
-    // reset gift visuals
     if(giftLid) gsap.set(giftLid, {rotationX:0});
     if(giftBox) gsap.set(giftBox, {scale:1});
     if(giftReveal) giftReveal.style.opacity = 0;
-    if(giftSticker) { gsap.set(giftSticker, {scale:0.8, rotation:0, opacity:0}); gsap.killTweensOf(giftSticker); }
-    // reset letter next button
+    const tcont = document.getElementById('teddyContainer');
+    const tmsg = document.getElementById('teddyMessage');
+    if(tcont){ tcont.classList.add('hide'); tcont.innerHTML = ''; }
+    if(tmsg) tmsg.textContent = '';
     const nextBtn = document.getElementById('letterNextBtn');
-    if(nextBtn){
-      gsap.set(nextBtn, {opacity:0, y:6});
-      nextBtn.style.pointerEvents = 'none';
+    if(nextBtn){ gsap.set(nextBtn, {opacity:0, y:6}); nextBtn.style.pointerEvents = 'none'; }
+    try { if(isPlaying()) {
+      pauseAll();
+      console.log('Music paused on replay');
+    } } catch(e){ console.warn(e); }
+    giftOpened = false;
+    secondGiftOpened = false;
+    // hide minion image again for replay
+    if(minionImg){
+      gsap.set(minionImg, {scale:0.95, opacity:0});
+      minionImg.style.display = 'block';
     }
-    // go back to welcome
+    // hide minion Next button
+    if(minionNextBtn){
+      gsap.set(minionNextBtn, {opacity:0, y:6});
+      minionNextBtn.style.pointerEvents = 'none';
+    }
     show('welcome');
     window.scrollTo({top:0,behavior:'smooth'});
   });
 
-  // Export show to global for debug if needed
+  // Export show to global for debug
   window._showStep = show;
+
+  // Small debug helpers
+  window._audioDebug = { isPlaying: () => isPlaying(), usingFallback: () => usingFallback };
+
+  /* ============================
+     Minion image verification (no fallback)
+     - Always load assets/minion.png
+     - If load fails, print exact error in console (no fallback)
+     - Image is kept hidden until second Open Gift click
+  ============================ */
+  (function ensureMinionImage(){
+    const img = document.getElementById('minionImg');
+    if(!img){
+      console.error('[Minion] minionImg element not found in DOM');
+      return;
+    }
+
+    const REQUIRED_SRC = 'assets/minion.png';
+    if(!img.getAttribute('src') || img.getAttribute('src') !== REQUIRED_SRC){
+      img.setAttribute('src', REQUIRED_SRC);
+    }
+
+    // Keep hidden initially (visible only after second open)
+    img.style.display = 'block';
+    gsap.set(img, {opacity:0, scale:0.95});
+
+    img.addEventListener('load', function onLoad(){
+      console.log('[Minion] loaded from', img.src);
+      // keep hidden (opacity:0) until reveal by user action
+      img.removeEventListener('load', onLoad);
+    });
+
+    img.addEventListener('error', function onError(event){
+      // Print exact error info to console per request (no fallback)
+      console.error('[Minion] failed to load image at', img.src, 'event:', event);
+      img.removeEventListener('error', onError);
+    });
+
+    // Force reload to ensure handlers run
+    const current = img.src;
+    img.src = '';
+    setTimeout(()=> { img.src = REQUIRED_SRC; }, 10);
+  })();
+
 })();

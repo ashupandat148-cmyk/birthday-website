@@ -65,9 +65,9 @@
     <div class="letter">
       <div class="paper">
         <h2 id="letterGreet">Happy Birthday, Miss Captain 💜</h2>
-        <div class="message" id="letterText"></div>
+        <div class="message" id="letterText" aria-live="polite"></div>
 
-        <!-- Next button for manual progression (hidden until typing finishes) -->
+        <!-- Next button for manual progression (hidden until animation finishes) -->
         <div style="display:flex;justify-content:center;margin-top:18px">
           <button id="letterNextBtn" class="btn" style="opacity:0;transform:translateY(6px);pointer-events:none">Next ➜</button>
         </div>
@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <!-- Virtual Gift Screen -->
+  <!-- Virtual Gift Screen (teddy screen) -->
   <div id="giftScreen" class="screen" data-step="gift">
     <div class="gift-wrap">
       <div class="gift-box" id="giftBox" role="button" aria-label="Open virtual gift">
@@ -83,30 +83,41 @@
         <div class="bow"></div>
         <div class="box-base" id="boxBase">TO YOU</div>
       </div>
+
       <div class="gift-message" id="giftReveal" style="color:#fff; opacity:0;">
-        <strong style="font-size:18px">A cute virtual gift just for you 💜</strong>
-        <div style="opacity:0.95;margin-top:8px">Sending you big hugs, silly smiles & one virtual bear hug 🤗</div>
+        <div class="sticker" id="giftSticker" aria-hidden="true">💜</div>
+
+        <div id="teddyContainer" class="teddy-wrap hide" aria-hidden="true"></div>
+        <div id="teddyMessage" style="opacity:0;margin-top:8px;font-weight:700"></div>
+
+        <!-- Next button shown after teddy appears -->
+        <div style="display:flex;justify-content:center;margin-top:12px">
+          <button id="teddyNextBtn" class="btn" style="opacity:0; transform:translateY(6px); pointer-events:none">Next</button>
+        </div>
       </div>
+
       <div style="display:flex;gap:12px">
+        <!-- SECOND "Open Gift" button (on gift screen) -->
         <button id="openGiftBtn2" class="btn">Open Gift</button>
         <button id="skipGiftBtn" class="btn-ghost">Skip</button>
       </div>
     </div>
   </div>
 
-  <div id="memoryScreen" class="screen" data-step="memory">
-    <div style="text-align:center;margin-bottom:12px">
-      <h2 style="margin:0">Memories</h2>
-      <p style="opacity:0.85;margin:6px 0 14px">Some favorite moments captured</p>
-    </div>
-    <div class="memory-grid" id="memoryGrid"></div>
-  </div>
-
   <div id="minionScreen" class="screen" data-step="minion">
     <div class="minion-wrap">
-      <div class="minion" id="minion">
-        <img src="assets/minion.png" alt="Minion" style="width:60%;height:80%;object-fit:contain">
+      <div id="minionCaption" style="margin-bottom:10px;opacity:0.95">I have one more surprise for you 💛</div>
+
+      <!-- Next button appears under the message when minion reveals -->
+      <div style="display:flex;justify-content:center;margin-bottom:10px">
+        <button id="minionNextBtn" class="btn" style="opacity:0; transform:translateY(6px); pointer-events:none">Next</button>
       </div>
+
+      <div class="minion" id="minion">
+        <!-- must point to assets/minion.png -->
+        <img id="minionImg" src="assets/minion.png" alt="Minion" style="display:block;width:60%;height:80%;object-fit:contain;opacity:0;z-index:2;">
+      </div>
+      <!-- SECOND Open Gift (on minion screen) -->
       <button id="openGiftBtn" class="btn">Open Gift</button>
     </div>
   </div>
@@ -119,6 +130,9 @@
     </div>
   </div>
 </div>
+
+<!-- Floating music control (bottom-right) -->
+<button id="musicControl" class="music-control" aria-label="Toggle music" title="Play/Pause music">♪</button>
 
 <!-- Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
