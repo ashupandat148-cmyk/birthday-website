@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Surprise — Happy Birthday</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600;800&family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <!-- Screens -->
+  <div id="welcome" class="screen active" data-step="welcome">
+    <canvas id="stars"></canvas>
+    <div class="welcome-content">
+      <h1>A surprise is waiting for you...</h1>
+      <p class="lead">Open to find your special birthday today ✨</p>
+      <button id="beginBtn" class="btn glow">Begin</button>
+    </div>
+    <footer class="controls-bottom">
+      <button id="musicBtn" class="music-toggle">Play Music</button>
+    </footer>
+  </div>
+
+  <div id="cakeScreen" class="screen" data-step="cake">
+    <div id="cake" class="cake-scene">
+      <div class="cake" aria-hidden="true">
+        <div class="candles" id="candles">
+          <div class="candle"><div class="flame"></div></div>
+          <div class="candle"><div class="flame"></div></div>
+          <div class="candle"><div class="flame"></div></div>
+          <div class="candle"><div class="flame"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="blowBtn" class="btn">Blow the Candles 🎂</button>
+    </div>
+  </div>
+
+  <div id="questionScreen" class="screen" data-step="question">
+    <div class="question-card">
+      <h2 style="margin:0 0 6px">Can I steal 2 minutes of your day? ❤️</h2>
+      <p style="opacity:0.85;margin:0 0 12px">A tiny surprise inside — promise it's sweet.</p>
+      <div class="choices">
+        <button id="yesBtn" class="btn">Yes 😊</button>
+        <button id="noBtn" class="btn-ghost">No 😒</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scratchScreen" class="screen" data-step="scratch">
+    <div class="scratch-wrap">
+      <div class="scratch-card" id="scratchCard" aria-label="Scratch card">
+        <div class="message hide" id="scratchMessage">
+          <span style="font-weight:800;font-size:18px;color:#522e5b">Happy Birthday Miss Captain 💜</span>
+        </div>
+        <canvas id="scratchCanvas" class="scratch-overlay"></canvas>
+      </div>
+      <small style="opacity:0.8">Use your finger or mouse to scratch the silver area</small>
+    </div>
+  </div>
+
+  <div id="letterScreen" class="screen" data-step="letter">
+    <div class="letter">
+      <div class="paper">
+        <h2 id="letterGreet">Happy Birthday, Miss Captain 💜</h2>
+        <div class="message" id="letterText"></div>
+
+        <!-- Next button for manual progression (hidden until typing finishes) -->
+        <div style="display:flex;justify-content:center;margin-top:18px">
+          <button id="letterNextBtn" class="btn" style="opacity:0;transform:translateY(6px);pointer-events:none">Next ➜</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Virtual Gift Screen -->
+  <div id="giftScreen" class="screen" data-step="gift">
+    <div class="gift-wrap">
+      <div class="gift-box" id="giftBox" role="button" aria-label="Open virtual gift">
+        <div class="box-lid" id="giftLid"></div>
+        <div class="bow"></div>
+        <div class="box-base" id="boxBase">TO YOU</div>
+      </div>
+      <div class="gift-message" id="giftReveal" style="color:#fff; opacity:0;">
+        <strong style="font-size:18px">A cute virtual gift just for you 💜</strong>
+        <div style="opacity:0.95;margin-top:8px">Sending you big hugs, silly smiles & one virtual bear hug 🤗</div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <button id="openGiftBtn2" class="btn">Open Gift</button>
+        <button id="skipGiftBtn" class="btn-ghost">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="memoryScreen" class="screen" data-step="memory">
+    <div style="text-align:center;margin-bottom:12px">
+      <h2 style="margin:0">Memories</h2>
+      <p style="opacity:0.85;margin:6px 0 14px">Some favorite moments captured</p>
+    </div>
+    <div class="memory-grid" id="memoryGrid"></div>
+  </div>
+
+  <div id="minionScreen" class="screen" data-step="minion">
+    <div class="minion-wrap">
+      <div class="minion" id="minion">
+        <img src="assets/minion.png" alt="Minion" style="width:60%;height:80%;object-fit:contain">
+      </div>
+      <button id="openGiftBtn" class="btn">Open Gift</button>
+    </div>
+  </div>
+
+  <div id="finalScreen" class="screen" data-step="final">
+    <div class="final">
+      <h1>Thank you for being you.</h1>
+      <p style="font-size:20px;margin:10px 0 20px;opacity:0.95">Keep flying... Keep smiling... Happy Birthday ❤️</p>
+      <button id="replayBtn" class="btn">Replay Surprise</button>
+    </div>
+  </div>
+</div>
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+<script src="script.js"></script>
+</body>
+</html>
