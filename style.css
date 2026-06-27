@@ -8,6 +8,7 @@ html,body{height:100%;margin:0;font-family:Poppins,system-ui,Segoe UI,Roboto; ba
 .app{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;position:relative;}
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;opacity:0;pointer-events:none;}
 .screen.active{opacity:1;pointer-events:auto;transition:opacity 0.28s ease;}
+
 /* Welcome */
 #welcome{background:linear-gradient(135deg,#071023 0%, #09122e 40%, #09111f 100%); padding:32px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.6);width:min(880px,92vw);height:80vh;overflow:hidden; position:relative;}
 canvas#stars{position:absolute;inset:0;display:block;z-index:0}
@@ -17,26 +18,28 @@ p.lead{font-size:20px;opacity:0.9;margin:0 0 18px}
 button.btn{--g:linear-gradient(90deg,var(--accent),var(--accent2)); background:var(--g); border:0;padding:14px 30px;border-radius:999px;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 8px 30px rgba(138,79,255,0.22); transform:translateZ(0);}
 .glow{animation:glow 2s ease-in-out infinite}
 @keyframes glow{0%{filter:drop-shadow(0 0 10px rgba(138,79,255,0.25))}50%{filter:drop-shadow(0 0 26px rgba(255,110,199,0.32))}100%{filter:drop-shadow(0 0 10px rgba(138,79,255,0.25))}}
+
 /* Cake */
 #cake{display:flex;align-items:center;justify-content:center;gap:40px;flex-direction:column;}
-.cake-scene{width:520px; height:360px;position:relative; perspective:1200px; display:flex;align-items:center;justify-content:center;}
-.cake{width:360px;height:180px;border-radius:160px 160px 60px 60px/80px 80px 40px 40px;background:linear-gradient(#ffd6bf,#ffbfa1);box-shadow:0 30px 50px rgba(0,0,0,0.45), inset 0 -6px 20px rgba(0,0,0,0.06);position:relative; transform:rotateX(7deg) rotateY(-8deg) translateZ(0);}
-.cake::before{content:'';position:absolute;left:18px;right:18px;top:8px;height:36px;border-radius:18px;background:linear-gradient(#fff9f3,#ffe6db);opacity:0.9}
-.candles{position:absolute;top:-46px;left:50%;transform:translateX(-50%);display:flex;gap:18px}
-.candle{width:12px;height:44px;background:linear-gradient(#ffffff,#ffe6e6);border-radius:4px;position:relative;box-shadow:0 4px 8px rgba(0,0,0,0.2)}
-.flame{position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:14px;height:22px; background:radial-gradient(circle at 50% 40%, #fff2b8 0 20%, #ffbf56 30%, #ff6c6c 60%);border-radius:50% 50% 40% 40%/60% 60% 40% 40%; filter:blur(0.5px);opacity:0.95}
-/* Blow button */
+.cake-scene{width:100%;max-width:400px;height:auto;position:relative;perspective:1200px;display:flex;align-items:center;justify-content:center;padding:40px 0;}
+.birthday-cake{width:300px;height:400px;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.4));animation:cakeBounce 3s ease-in-out infinite;}
+@keyframes cakeBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.flame-top{animation:flameFlicker 0.4s ease-in-out infinite;}
+@keyframes flameFlicker{0%,100%{r:5;opacity:1}50%{r:6;opacity:0.8}}
 .controls{display:flex;gap:12px;align-items:center;justify-content:center}
-/* Funny question */
+
+/* Question */
 .question-card{background:var(--glass);backdrop-filter: blur(6px);padding:22px;border-radius:16px;border:1px solid rgba(255,255,255,0.04);width:min(560px,92vw);text-align:center}
 .choices{display:flex;gap:18px;justify-content:center;align-items:center}
 .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.12);padding:10px 18px;border-radius:12px;color:#fff;cursor:pointer}
+
 /* Scratch */
 .scratch-wrap{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
 .scratch-card{width:420px;height:220px;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.45);background:linear-gradient(180deg,#fff7f0,#ffeef7);display:flex;align-items:center;justify-content:center}
 .scratch-overlay{position:absolute;inset:0;background:linear-gradient(135deg,#bdbdbd,#8e8e8e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
 .message{font-size:20px;color:#3b2a41;padding:26px;line-height:1.45;text-align:center}
-/* Letter - premium paper background & smooth reveal */
+
+/* Letter */
 .letter{width:720px;max-width:94vw;height:520px;background:transparent;border-radius:12px;padding:34px;box-shadow:0 30px 60px rgba(0,0,0,0.35);overflow:auto}
 .paper{
   position:relative;
@@ -53,7 +56,6 @@ button.btn{--g:linear-gradient(90deg,var(--accent),var(--accent2)); background:v
   overflow:auto;
   border: 1px solid rgba(18,10,28,0.04);
 }
-/* subtle soft vignette for premium look */
 .paper::after{
   content:'';
   position:absolute;
@@ -66,8 +68,8 @@ button.btn{--g:linear-gradient(90deg,var(--accent),var(--accent2)); background:v
 }
 .letter h2{font-family:Pacifico;font-size:30px;margin:0 0 8px;color:#5b2b6a; z-index:2}
 #letterText{color:#3a2b2a; font-size:19px; width:100%; max-width:680px; line-height:1.7; text-align:left; z-index:2; padding:10px 6px; border-radius:8px}
-/* Next button */
 #letterNextBtn{margin-top:12px}
+
 /* Gift */
 .gift-wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
 .gift-box{width:180px;height:140px;position:relative;cursor:pointer;transform-origin:center;filter:drop-shadow(0 18px 40px rgba(0,0,0,0.45))}
@@ -80,20 +82,32 @@ button.btn{--g:linear-gradient(90deg,var(--accent),var(--accent2)); background:v
   width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#fff,#ffeef8);color:#6e2b6a;display:flex;align-items:center;justify-content:center;font-size:26px;border:3px solid rgba(255,255,255,0.14);box-shadow: 0 8px 30px rgba(138,79,255,0.12); margin-bottom:8px; transform:scale(0.8); opacity:0;
 }
 
-/* Teddy container & image styling */
+/* Teddy */
 .teddy-wrap{width:300px;max-width:86vw;height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 .teddy-svg{width:220px;height:220px;display:block;filter:drop-shadow(0 18px 40px rgba(0,0,0,0.25));border-radius:16px}
 #teddyMessage{font-size:20px;color:#fff; text-shadow:0 6px 18px rgba(0,0,0,0.25)}
 
+/* Memory */
+.memory-wrap{display:flex;flex-direction:column;align-items:center;gap:24px;width:100%;max-width:800px;padding:20px}
+.balloon-container{position:relative;width:200px;height:280px;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:20px 0}
+.floating-balloon{width:140px;height:200px;animation:balloonFloat 3s ease-in-out infinite;filter:drop-shadow(0 10px 30px rgba(255,110,199,0.3));transition:transform 0.3s ease;}
+.floating-balloon:hover{transform:scale(1.05)}
+@keyframes balloonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+
+.memory-image-wrapper{display:flex;align-items:center;justify-content:center;width:100%;max-width:500px}
+.memory-image{width:100%;max-width:400px;height:auto;border-radius:16px;box-shadow:0 12px 40px rgba(138,79,255,0.3);border:2px solid rgba(255,255,255,0.15);opacity:0;animation:memoryReveal 0.8s ease-out forwards}
+@keyframes memoryReveal{0%{opacity:0;transform:scale(0.85) rotateY(90deg) translateY(20px)}100%{opacity:1;transform:scale(1) rotateY(0deg) translateY(0px)}}
+
 /* Minion */
 .minion-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
 .minion{width:260px;height:320px;background:linear-gradient(#ffec6a,#ffd44d);border-radius:40px;display:flex;align-items:center;justify-content:center;box-shadow:0 30px 50px rgba(0,0,0,0.45)}
-/* Ensure minion image displays properly; JS controls initial hidden state via inline opacity */
 .minion img{ display:block; width:60%; height:80%; object-fit:contain; opacity:1; z-index:2; }
+
 /* Final */
 .final{text-align:center;padding:30px}
 .final h1{font-size:46px;color:#fff; text-shadow:0 10px 40px rgba(255,110,199,0.18)}
-/* Floating music control */
+
+/* Music Control */
 .music-control{
   position:fixed; right:18px; bottom:18px; z-index:9999;
   width:56px; height:56px; border-radius:999px; border:0; cursor:pointer;
@@ -114,7 +128,8 @@ button.btn{--g:linear-gradient(90deg,var(--accent),var(--accent2)); background:v
   50%{box-shadow:0 18px 60px rgba(138,79,255,0.26)}
   100%{box-shadow:0 8px 30px rgba(138,79,255,0.18)}
 }
-/* floating hearts (spawned dynamically) */
+
+/* Hearts */
 .heart{
   position:fixed;
   pointer-events:none;
@@ -122,15 +137,18 @@ button.btn{--g:linear-gradient(90deg,var(--accent),var(--accent2)); background:v
   z-index:9998;
   transform-origin:center;
 }
-/* shared helpers */
+
+/* Helpers */
 .hide{display:none}
 footer.controls-bottom{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:12px;z-index:50}
 .music-toggle{background:transparent;border:1px solid rgba(255,255,255,0.08);padding:8px 12px;border-radius:12px;color:#fff}
-/* responsive */
+
+/* Responsive */
 @media (max-width:700px){
-  .cake{width:300px;height:150px}
   .letter{height:64vh;padding:18px}
   .gift-box{width:140px;height:120px}
   .music-control{right:12px;bottom:12px;width:48px;height:48px}
   .teddy-svg{width:160px;height:160px}
+  .birthday-cake{width:220px;height:300px}
+  .memory-image{max-width:100% !important}
 }
